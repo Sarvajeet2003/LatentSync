@@ -1,193 +1,66 @@
-# LatentSync: Audio Conditioned Latent Diffusion Models for Lip Sync
+# LatentSync Enhancements and Super-Resolution Integration
 
-<div align="center">
+This repository implements a system for generating lipsynced videos by enhancing video quality using super-resolution models such as **GFPGAN** and **CodeFormer**. The following changes have been made to integrate super-resolution functionality using both models.
 
-[![arXiv](https://img.shields.io/badge/arXiv_paper-2412.09262-b31b1b)](https://arxiv.org/abs/2412.09262)
-[![arXiv](https://img.shields.io/badge/%F0%9F%A4%97%20space-HuggingFace-yellow)](https://huggingface.co/spaces/fffiloni/LatentSync)
-<a href="https://replicate.com/lucataco/latentsync"><img src="https://replicate.com/lucataco/latentsync/badge" alt="Replicate"></a>
+## Changes Overview
 
-</div>
+### 1. **Super-Resolution Integration**
+   I have integrated two super-resolution models, **GFPGAN** and **CodeFormer**, to improve the quality of the generated part of the video. You can now specify which super-resolution model(s) to apply using the `--superres` argument when running the inference script.
 
-## 📖 Abstract
+   - **GFPGAN**: This model is used to enhance the generated part of the video.
+   - **CodeFormer**: This model is also used for improving the video quality.
+   - **Both Models**: Both **GFPGAN** and **CodeFormer** can be applied sequentially to the video by passing `"GFPGAN,CodeFormer"` in the `--superres` argument.
+   - **No Super-Resolution**: If you do not want to apply any super-resolution, use `"None"`.
 
-We present *LatentSync*, an end-to-end lip sync framework based on audio conditioned latent diffusion models without any intermediate motion representation, diverging from previous diffusion-based lip sync methods based on pixel space diffusion or two-stage generation. Our framework can leverage the powerful capabilities of Stable Diffusion to directly model complex audio-visual correlations. Additionally, we found that the diffusion-based lip sync methods exhibit inferior temporal consistency due to the inconsistency in the diffusion process across different frames. We propose *Temporal REPresentation Alignment (TREPA)* to enhance temporal consistency while preserving lip-sync accuracy. TREPA uses temporal representations extracted by large-scale self-supervised video models to align the generated frames with the ground truth frames.
+### 2. **Modifications in the `inference.sh` Script**
+   I modified the `inference.sh` script to support the `--superres` argument. This allows me to pass either `GFPGAN`, `CodeFormer`, `GFPGAN,CodeFormer`, or `None` to control which super-resolution models should be applied to the generated video.
 
-## 🏗️ Framework
+   **Example Usage:**
+   - To apply **GFPGAN**:  
+     ```bash
+     ./inference.sh GFPGAN
+     ```
+   - To apply **CodeFormer**:  
+     ```bash
+     ./inference.sh CodeFormer
+     ```
+   - To apply **both GFPGAN and CodeFormer**:  
+     ```bash
+     ./inference.sh GFPGAN,CodeFormer
+     ```
+   - To **not apply any super-resolution**:  
+     ```bash
+     ./inference.sh None
+     ```
 
-<p align="center">
-<img src="assets/framework.png" width=100%>
-<p>
+### 3. **Modifications in the `inference.py` Script**
+   The main inference logic was updated to check the `--superres` argument. If the argument specifies a super-resolution model, it calculates the resolution ratio between the input video and the output video. If the generated video has a lower resolution than the input video, the chosen super-resolution model(s) are applied to enhance the generated video.
 
-LatentSync uses the [Whisper](https://github.com/openai/whisper) to convert melspectrogram into audio embeddings, which are then integrated into the U-Net via cross-attention layers. The reference and masked frames are channel-wise concatenated with noised latents as the input of U-Net. In the training process, we use a one-step method to get estimated clean latents from predicted noises, which are then decoded to obtain the estimated clean frames. The TREPA, [LPIPS](https://arxiv.org/abs/1801.03924) and [SyncNet](https://www.robots.ox.ac.uk/~vgg/publications/2016/Chung16a/chung16a.pdf) losses are added in the pixel space.
+   **Changes in the `main()` function:**
+   - The function accepts the `--superres` argument, which can be one of the following values:
+     - `"GFPGAN"`: Apply only GFPGAN.
+     - `"CodeFormer"`: Apply only CodeFormer.
+     - `"GFPGAN,CodeFormer"`: Apply both models sequentially.
+     - `"None"`: Apply no super-resolution.
+   - The resolution ratio between input and output videos is calculated using the `calculate_resolution_ratio()` function. If the output resolution is poorer, the specified super-resolution model(s) are applied.
 
-## 🎬 Demo
+   **Super-Resolution Model Application:**
+   - If **GFPGAN** is specified, it is applied to the generated part of the video using `apply_gfpgan_superres()`.
+   - If **CodeFormer** is specified, it is applied to the generated part of the video using `apply_codeformer_superres()`.
 
-<table class="center">
-  <tr style="font-weight: bolder;text-align:center;">
-        <td width="50%"><b>Original video</b></td>
-        <td width="50%"><b>Lip-synced video</b></td>
-  </tr>
-  <tr>
-    <td>
-      <video src=https://github.com/user-attachments/assets/ff3a84da-dc9b-498a-950f-5c54f58dd5c5 controls preload></video>
-    </td>
-    <td>
-      <video src=https://github.com/user-attachments/assets/150e00fd-381e-4421-a478-a9ea3d1212a8 controls preload></video>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <video src=https://github.com/user-attachments/assets/32c830a9-4d7d-4044-9b33-b184d8e11010 controls preload></video>
-    </td>
-    <td>
-      <video src=https://github.com/user-attachments/assets/84e4fe9d-b108-44a4-8712-13a012348145 controls preload></video>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <video src=https://github.com/user-attachments/assets/7510a448-255a-44ee-b093-a1b98bd3961d controls preload></video>
-    </td>
-    <td>
-      <video src=https://github.com/user-attachments/assets/6150c453-c559-4ae0-bb00-c565f135ff41 controls preload></video>
-    </td>
-  </tr>
-  <tr>
-    <td width=300px>
-      <video src=https://github.com/user-attachments/assets/0f7f9845-68b2-4165-bd08-c7bbe01a0e52 controls preload></video>
-    </td>
-    <td width=300px>
-      <video src=https://github.com/user-attachments/assets/c34fe89d-0c09-4de3-8601-3d01229a69e3 controls preload></video>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <video src=https://github.com/user-attachments/assets/7ce04d50-d39f-4154-932a-ec3a590a8f64 controls preload></video>
-    </td>
-    <td>
-      <video src=https://github.com/user-attachments/assets/70bde520-42fa-4a0e-b66c-d3040ae5e065 controls preload></video>
-    </td>
-  </tr>
-</table>
+   **Helper Functions Added:**
+   - `calculate_resolution_ratio(input_video_path, output_video_path)`: This function calculates the resolution ratio between the input and output videos.
+   - `apply_gfpgan_superres(video_out_path)`: This function applies GFPGAN super-resolution to the output video.
+   - `apply_codeformer_superres(video_out_path)`: This function applies CodeFormer super-resolution to the output video.
 
-(Photorealistic videos are filmed by contracted models, and anime videos are from [VASA-1](https://www.microsoft.com/en-us/research/project/vasa-1/) and [EMO](https://humanaigc.github.io/emote-portrait-alive/))
+### 4. **Updated `requirements.txt`**
+   To ensure the new super-resolution models work, I updated the `requirements.txt` to include the necessary dependencies:
+   - **GFPGAN**: The package was added to the `requirements.txt` to ensure the model can be used in the project.
+   - **CodeFormer**: I added the dependency for **CodeFormer** to the `requirements.txt` to make sure the model is available for enhancing video quality.
 
-## 📑 Open-source Plan
-
-- [x] Inference code and checkpoints
-- [x] Data processing pipeline
-- [x] Training code
-
-## 🔧 Setting up the Environment
-
-Install the required packages and download the checkpoints via:
-
-```bash
-source setup_env.sh
-```
-
-If the download is successful, the checkpoints should appear as follows:
-
-```
-./checkpoints/
-|-- latentsync_unet.pt
-|-- latentsync_syncnet.pt
-|-- whisper
-|   `-- tiny.pt
-|-- auxiliary
-|   |-- 2DFAN4-cd938726ad.zip
-|   |-- i3d_torchscript.pt
-|   |-- koniq_pretrained.pkl
-|   |-- s3fd-619a316812.pth
-|   |-- sfd_face.pth
-|   |-- syncnet_v2.model
-|   |-- vgg16-397923af.pth
-|   `-- vit_g_hybrid_pt_1200e_ssv2_ft.pth
-```
-
-These already include all the checkpoints required for latentsync training and inference. If you just want to try inference, you only need to download `latentsync_unet.pt` and `tiny.pt` from our [HuggingFace repo](https://huggingface.co/ByteDance/LatentSync)
-
-## 🚀 Inference
-
-There are two ways to perform inference, and both require 6.5 GB of VRAM.
-
-### 1. Gradio App
-
-Run the Gradio app for inference:
-
-```bash
-python gradio_app.py
-```
-
-### 2. Command Line Interface
-
-Run the script for inference:
-
-```bash
-./inference.sh
-```
-
-You can change the parameters `inference_steps` and `guidance_scale` to see more results.
-
-## 🔄 Data Processing Pipeline
-
-The complete data processing pipeline includes the following steps:
-
-1. Remove the broken video files.
-2. Resample the video FPS to 25, and resample the audio to 16000 Hz.
-3. Scene detect via [PySceneDetect](https://github.com/Breakthrough/PySceneDetect).
-4. Split each video into 5-10 second segments.
-5. Remove videos where the face is smaller than 256 $\times$ 256, as well as videos with more than one face.
-6. Affine transform the faces according to the landmarks detected by [face-alignment](https://github.com/1adrianb/face-alignment), then resize to 256 $\times$ 256.
-7. Remove videos with [sync confidence score](https://www.robots.ox.ac.uk/~vgg/publications/2016/Chung16a/chung16a.pdf) lower than 3, and adjust the audio-visual offset to 0.
-8. Calculate [hyperIQA](https://openaccess.thecvf.com/content_CVPR_2020/papers/Su_Blindly_Assess_Image_Quality_in_the_Wild_Guided_by_a_CVPR_2020_paper.pdf) score, and remove videos with scores lower than 40.
-
-Run the script to execute the data processing pipeline:
-
-```bash
-./data_processing_pipeline.sh
-```
-
-You can change the parameter `input_dir` in the script to specify the data directory to be processed. The processed data will be saved in the `high_visual_quality` directory. Each step will generate a new directory to prevent the need to redo the entire pipeline in case the process is interrupted by an unexpected error.
-
-## 🏋️‍♂️ Training U-Net
-
-Before training, you must process the data as described above and download all the checkpoints. We released a pretrained SyncNet with 94% accuracy on the VoxCeleb2 dataset for the supervision of U-Net training. Note that this SyncNet is trained on affine transformed videos, so when using or evaluating this SyncNet, you need to perform affine transformation on the video first (the code of affine transformation is included in the data processing pipeline).
-
-If all the preparations are complete, you can train the U-Net with the following script:
-
-```bash
-./train_unet.sh
-```
-
-You should change the parameters in U-Net config file to specify the data directory, checkpoint save path, and other training hyperparameters.
-
-## 🏋️‍♂️ Training SyncNet
-
-In case you want to train SyncNet on your own datasets, you can run the following script. The data processing pipeline for SyncNet is the same as U-Net. 
-
-```bash
-./train_syncnet.sh
-```
-
-After `validations_steps` training, the loss charts will be saved in `train_output_dir`. They contain both the training and validation loss.
-
-## 📊 Evaluation
-
-You can evaluate the [sync confidence score](https://www.robots.ox.ac.uk/~vgg/publications/2016/Chung16a/chung16a.pdf) of a generated video by running the following script:
-
-```bash
-./eval/eval_sync_conf.sh
-```
-
-You can evaluate the accuracy of SyncNet on a dataset by running the following script:
-
-```bash
-./eval/eval_syncnet_acc.sh
-```
-
-## 🙏 Acknowledgement
-
-- Our code is built on [AnimateDiff](https://github.com/guoyww/AnimateDiff). 
-- Some code are borrowed from [MuseTalk](https://github.com/TMElyralab/MuseTalk), [StyleSync](https://github.com/guanjz20/StyleSync), [SyncNet](https://github.com/joonson/syncnet_python), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip).
-
-Thanks for their generous contributions to the open-source community.
+   Example entries in `requirements.txt`:
+   ```txt
+   torch>=1.9.0
+   gfpgan
+   codeformer
+   xformers==0.0.25  # For memory-efficient attention if needed
